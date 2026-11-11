@@ -12,6 +12,13 @@ parameters; unique device identifiers and Android boot images are kept locally.
 ABI. They are selected for songyuan with `myron-touch=5` and `myron-gpu=11`, both
 normal run modes. The paired IPI pending-bit fixes are enabled. No entry/panic
 screen, boot diagnostic page, hardware probe stage or automatic test reboot is enabled.
+Production mode also skips the inherited GPU scratch-write, client-round and cache-coherence tests.
+
+`drivers/NativeAdreno` pins the upstream `zg7681/NativeAdreno-myron` **a8xx**
+branch at `5bbeb3b8d049a637a595090319835a49e58a8b56`. Its chip register table,
+ring, CP init, IRQ decoder, timer and continuation submissions match this device
+code. The base repository's A740 submodule is overridden by this device module.
+Clone this repository with `--recurse-submodules`.
 
 ## Build profiles
 
@@ -25,6 +32,11 @@ GPU firmware is fetched outside Git from a pinned Xiaomi SM8850 vendor source.
 GMU/SQE/AQE/ZAP are checked by exact size and SHA-256 before compilation. The
 updated Xiaomi GMU image is checked with the existing host parser tests. Its
 runtime compatibility on this phone remains to be tested.
+
+The production Metal builder uses `SongyuanMetalPlugin.mm`: device discovery,
+native Metal translation and GPU scanout only. Its NGPUADD2 addon carries the
+plugin, signed Turnip library and publish marker; it carries no probe daemon,
+launchd overrides, background test worker or renderer memory-patching experiment.
 
 ## iOS 27 target
 

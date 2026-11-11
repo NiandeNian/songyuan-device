@@ -32,8 +32,7 @@
 //      (NativeAdrenoChipA8xx): the ring and CP_ME_INIT, a fenced CP_MEM_WRITE, the zap shader and the secure exit, the GPU
 //      interrupt (SPI 300) through the A8XX decoder, the always-on timer, then native_adreno_publish and two rounds through
 //      the published service as a client makes them (allocate, map, a framed submission, wait, read back); then the report.
-//  11  as 10 without the panic: the result goes to the diagnostic page's GPU rows and the boot continues with the GPU up and
-//      its service published.
+//  11  production: initialize the GPU and publish its service; skip scratch writes, client rounds and coherence probes.
 // `myron-gpu-delay=<s>` waits that long first (default 0). With mode 11, `myron-gpu-metal=1` then publishes the Metal accelerator
 // (NativeAdreno's staged AGXAccelerator; the plugin bundle itself comes from the GPU addon, sheng-gpu-addon=1), and
 // `myron-gpu-report=<s>` panics <s> seconds after the run with what the Metal side reached (who opened the driver, the plugin's
@@ -1189,7 +1188,7 @@ int clientRound(IOService *service) {
     return matched;
 }
 
-void runSteps() {
+void runSteps(bool diagnostics) {
     Mode10 &m = gM10;
     // The BO pool, which NativeAdrenoGpuContextBringup reserves while long contiguous runs remain: every client's buffers come from one
     // block whose pages never go back to the VM and take the write-combine attribute once. sheng's NativeAdrenoService sets its size
@@ -1228,7 +1227,8 @@ void runSteps() {
     m.init_wait = gRing.wait(m.init_fence, &gClock, 200000, &m.init_seen);
     if (m.init_wait) return;
     m.step = 2;
-    // The first command after it: a fenced CP_MEM_WRITE into the scratch page.
+    // Explicit diagnostic mode only: a fenced CP_MEM_WRITE into the scratch page.
+    if (diagnostics) {
     volatile uint32_t *scratch = gGpuCpu[4];
     scratch[0] = 0;
     __asm__ volatile("dsb sy" ::: "memory");
@@ -1238,6 +1238,7 @@ void runSteps() {
     if (!ringFence(write, 4, m.write_wait, &m.write_seen)) return;
     m.scratch = scratch[0];
     if (m.scratch != kScratchMagic) return;
+    }
     m.step = 3;
     // The zap shader through TrustZone, then CP_SET_SECURE_MODE 0 and GMEM protection, in hw_init's order.
     if (!zapLoad()) return;
@@ -1255,6 +1256,7 @@ void runSteps() {
     if (m.irq_mask) return;
     m.irq_attach = armcpu_spi_attach(332, false, gpuIrq, nullptr, &m.irq_readback, &m.irq_router);
     gIrqAttached = m.irq_attach == kIOReturnSuccess;
+    if (diagnostics) {
     IOSleep(20);
     m.irq_before = gIrqCount;
     uint32_t nop = 0;
@@ -1262,18 +1264,22 @@ void runSteps() {
     IOSleep(20);
     m.irq_after = gIrqCount;
     m.irq_seen = gIrqSeen;
+    }
     m.step = 5;
     // The always-on counter (19.2 MHz) through the A8XX table, twice, 10 ms apart.
     if (gTimer.useChip(&NativeAdrenoChipA8xx)) return;
     m.timer = gTimer.attach(&gTimerIo, NativeAdrenoTimeCp);
     if (m.timer) return;
-    gTimer.read(&m.ticks0);
-    IOSleep(10);
-    gTimer.read(&m.ticks1);
+    if (diagnostics) {
+        gTimer.read(&m.ticks0);
+        IOSleep(10);
+        gTimer.read(&m.ticks1);
+    }
     m.step = 6;
     NativeAdrenoVm *vm = NativeAdrenoGpuContextVm();
     // Before any client maps an import: prove IO coherence and, if both directions hold, switch imports to coherent mappings.
-    myronCoherenceProbe(vm);
+    if (diagnostics) myronCoherenceProbe(vm);
+    else native_adreno_io_coherent = 0; // no runtime test; keep the maintained, noncoherent import path
     // Per-submission clean/invalidate of every imported page: NativeMetal already flushes the surfaces a command buffer uses
     // (flushSurfaces at commit and completion; ios-pandora 0195 dropped the kernel loop for the same reason). Off by default,
     // myron-gpu-flushall=1 restores it.
@@ -1288,6 +1294,7 @@ void runSteps() {
     IOService *service = m.publish ? nullptr : native_adreno_published_service();
     if (!service) return;
     m.step = 8;
+    if (!diagnostics) return;
     m.rounds[0] = clientRound(service);
     m.rounds[1] = clientRound(service);   // the client slot must recycle; the close unmapped the round's addresses
     m.opened = native_adreno_publish_stats(&m.closed);
@@ -1466,7 +1473,7 @@ static void gpuDcvsStart() {
 
 void run10(unsigned mode) {
     Mode10 &m = gM10;
-    runSteps();
+    runSteps(mode != 11);
     m.status = gpuRd(A840_RBBM_STATUS);
     m.int0 = gpuRd(A840_RBBM_INT_0_STATUS);
     m.cp_int = gpuRd(A840_CP_INTERRUPT_STATUS_GLOBAL);

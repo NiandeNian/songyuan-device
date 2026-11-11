@@ -1,0 +1,4 @@
+[submodule "drivers/NativeAdreno"]
+	path = drivers/NativeAdreno
+	url = https://github.com/zg7681/NativeAdreno-myron.git
+	branch = a8xx

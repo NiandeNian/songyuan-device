@@ -353,6 +353,7 @@ accel_bindings=OUT/'accelerator-original-bindings.o'
 accel_bindings.write_bytes((accel/'original-bindings.o').read_bytes())
 run(['xcrun','ar','rcs',archive,accel/'NativeAdrenoAccelerator.late.o',accel_bindings])
 sources.extend([ROOT/'drivers/NativeAdreno/NativeAdrenoAccelerator.cpp',ROOT/'drivers/NativeMetal/OriginalAcceleratorABI.h'])
+sources.extend(sorted(adreno.glob('*.h')))
 (OUT/'build-report.json').write_text(json.dumps(dict(
     source_sha256={str(p.relative_to(ROOT)):sha(p) for p in sources},generated_abi_sha256=sha(OUT/'OriginalLegacyFramebufferABI.h'),
     original_candidate_sha256=sha(candidate),original_audit_sha256=sha(ROOT/'build/display-analysis/mobile-graphics-legacy-abi.json'),
