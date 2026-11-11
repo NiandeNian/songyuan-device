@@ -131,7 +131,7 @@ roots = [
 ]
 
 # The Mu-Silicium port. The package lives in the sibling ../songyuan-uefi checkout: Platforms/Xiaomi/songyuanPkg
-# built from the published songyuan-uefi package (itself derived from the OnePlus 15 astonPkg, same SM8850),
+# built from the published songyuan-uefi package with native SM8850 vendor inputs,
 # with this board's SMBIOS identity, 1200x2608 framebuffer and stock canoe.dtb. Build with
 #   ./unixnu build firmware -D ../songyuan-device --uefi ../songyuan-uefi
 [firmware]

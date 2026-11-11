@@ -50,7 +50,8 @@ version string. The existing qualified Apple component profile remains iPadOS 17
 
 No myron GPT offsets are retained. This phone's previous pinned iOS 16 HFSX file
 does not supply the APFS root and signed policies this new boot chain expects.
-Storage installation and hardware tests are pending while the phone is offline.
+The phone is online. Firmware menu boot currently remains black; storage
+installation and physical touch/GPU validation are still pending.
 Actions validates board parameters and runs the existing touch/GPU host tests;
 it cannot verify touch, GPU or an iOS desktop on the physical phone.
 
