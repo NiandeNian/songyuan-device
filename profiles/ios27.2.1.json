@@ -1,0 +1,36 @@
+{
+  "target": {
+    "identifier": "iPhone17,1",
+    "version": "27.2.1",
+    "buildid": "24B156",
+    "sha1sum": "88389583240bf218667b3267e544b8a1efbf8bcc",
+    "md5sum": "5c740d435827b4ae75c7b811a871c0ca",
+    "sha256sum": "e2916731a8d655d3d2d5aec75ebab1fde569a2fe3aa01092ac096d75582bea8d",
+    "filesize": 12992259527,
+    "url": "https://updates.cdn-apple.com/2026FallFCS/a75ca3b6-83d4-440d-99fc-99ecb7406750/iPhone17,1_27.2.1_24B156_Restore.ipsw",
+    "releasedate": "2026-11-09T18:28:03Z",
+    "uploaddate": "2026-11-06T23:20:37Z",
+    "signed": true
+  },
+  "kernel": {
+    "cpu_type": "0x100000c",
+    "cpu_subtype": "0xc0000002",
+    "file_type": 12,
+    "segments": [
+      "__TEXT",
+      "__PRELINK_TEXT",
+      "__DATA_CONST",
+      "__DATA_SPTM",
+      "__TEXT_EXEC",
+      "__TEXT_BOOT_EXEC",
+      "__PRELINK_INFO",
+      "__DATA",
+      "__LINKEDIT"
+    ],
+    "fileset_entries": 305,
+    "darwin_version": "Darwin Kernel Version 27.2.0: Tue Oct 13 21:27:45 PDT 2026; root:xnu-13432.42.3~28/RELEASE_ARM64_T8140"
+  },
+  "buildable_with_current_sources": false,
+  "blocking_source": "xnu-13432.42.3",
+  "reason": "Apple OSS has no matching XNU tag; current UniXNU driver ABI is Darwin 23 ARM64, target is Darwin 27 ARM64e."
+}
