@@ -40,7 +40,6 @@ extern void IOSleep(unsigned int milliseconds);
 extern uint64_t myron_cpu_idle_mach(int cpu);   /* osfmk/arm64/cpu.c */
 extern void myron_cpu_recommend(uint64_t cores);
 extern void myron_idle_start(void);
-extern void myron_idle_log(void);
 
 #define PDP_MBOX_TX_PA          0x19980000ull   /* qcom,pdp0 "tx" registers */
 #define PDP_MBOX_TX_CMD(ch)     (0x100u + (ch) * 8u + 4u)
@@ -125,6 +124,7 @@ scmi_call(uint32_t proto, uint32_t msg, const uint32_t *in, uint32_t nin, uint32
 	return 0;
 }
 
+#if XNU_BOOT_PROGRESS
 static void
 scmi_name(const uint32_t *w, char name[17])
 {
@@ -206,6 +206,8 @@ myron_cpu_scmi_probe(void)
 		    n > 1 ? out[1] : 0);
 	}
 }
+
+#endif // XNU_BOOT_PROGRESS
 
 /* ---- governor ---- */
 static const uint32_t cpu_khz0[] = { 384000, 537600, 691200, 787200, 883200, 998400, 1113600, 1228800, 1324800, 1440000,
@@ -306,6 +308,7 @@ cpu_fast_channel(uint32_t d, uint32_t msg)
 	    db, dm->fast_db ? "mapped" : "not used");
 }
 
+#if XNU_BOOT_PROGRESS
 /* Set LEVEL on domain D by METHOD and see what the firmware reports afterwards. */
 static bool
 cpu_try(uint32_t d, uint32_t level, int method, const char *how)
@@ -353,6 +356,26 @@ cpu_check_levels(void)
 	}
 	printf("MYRON CPU: check: domain 0 method %d, domain 1 method %d (0 SCMI, 1 SCMI + pdp1 doorbell, 2 fast channel, "
 	    "3 limits, -1 none)\n", cpu_dom[0].method, d1->method);
+}
+
+#endif // XNU_BOOT_PROGRESS
+
+/* Initialize the documented SCMI performance transport without frequency sweeps. */
+static bool
+cpu_initialize(void)
+{
+    uint32_t out[4], n = 0;
+    cpu_mbox = ml_io_map(PDP_MBOX_TX_PA, 0x1000);
+    cpu_shmem = ml_io_map(PDP_SHMEM_PA, 0x1000);
+    if (!cpu_mbox || !cpu_shmem || scmi_call(SCMI_PROTO_PERF, 0x1, NULL, 0, out, 4, &n) ||
+        n < 2 || (int32_t)out[0] != 0 || (out[1] & 0xffffu) < 2) {
+        return false;
+    }
+    for (uint32_t domain = 0; domain < 2; ++domain) {
+        cpu_fast_channel(domain, 0x7);
+        cpu_dom[domain].method = cpu_dom[domain].fast ? 2 : 0;
+    }
+    return true;
 }
 
 /* ---- temperatures and thermal control ----
@@ -528,11 +551,10 @@ cpu_thermal(void)
 static void
 cpu_governor(void)
 {
-	uint64_t now, last_log, two, last_pctl, ten;
+	uint64_t now, last_log, two;
 	uint64_t idle[MYRON_CPUS] = { 0 }, stamp;
 	int fix;
 	nanoseconds_to_absolutetime(2000 * NSEC_PER_MSEC, &two);
-	nanoseconds_to_absolutetime(10000 * NSEC_PER_MSEC, &ten);
 	for (uint32_t d = 0; d < 2; d++) {
 		struct cpu_domain *dm = &cpu_dom[d];
 		const uint32_t top = cpu_get(d, 0x3, 4);   /* sustained level */
@@ -558,7 +580,7 @@ cpu_governor(void)
 	for (int c = 0; c < MYRON_CPUS; c++) {
 		idle[c] = myron_cpu_idle_mach(c);
 	}
-	stamp = last_log = last_pctl = mach_absolute_time();
+	stamp = last_log = mach_absolute_time();
 	myron_cpu_temps(true);
 	int t_test = 0;
 	if (PE_parse_boot_argn("myron-thermal-test", &t_test, sizeof(t_test)) && t_test > 0 && t_test < 80) {
@@ -658,10 +680,6 @@ cpu_governor(void)
 				dm->changes = 0;
 			}
 		}
-		if (now - last_pctl >= ten) {
-			last_pctl = now;
-			myron_idle_log();
-		}
 	}
 }
 
@@ -669,8 +687,13 @@ static void
 cpu_thread(__unused void *arg, __unused wait_result_t wr)
 {
 	IOSleep(3000);
+	if (!cpu_initialize()) {
+		return;
+	}
 	myron_idle_start();
+#if XNU_BOOT_PROGRESS
 	myron_cpu_scmi_probe();
+#endif
 	int mode = 0;
 	(void)PE_parse_boot_argn("myron-cpufreq", &mode, sizeof(mode));
 	int thermal = 1;
@@ -678,7 +701,9 @@ cpu_thread(__unused void *arg, __unused wait_result_t wr)
 		cpu_thermal_on = 0;
 	}
 	if (mode >= 2 && cpu_mbox && cpu_shmem) {
+#if XNU_BOOT_PROGRESS
 		cpu_check_levels();
+#endif
 		cpu_governor();   /* does not return */
 	}
 }

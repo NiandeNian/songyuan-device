@@ -1544,6 +1544,8 @@ void publishMetal() {
     m.stage = 5;
 }
 
+#if XNU_BOOT_PROGRESS
+// Optional inherited diagnostic pages; excluded from songyuan production builds.
 // A panic report's text; append() is printf into it, and once it is full the rest is dropped.
 struct ReportText {char text[4096]; size_t n;};
 __attribute__((format(printf, 2, 3))) void append(ReportText &out, const char *format, ...) {
@@ -2176,6 +2178,8 @@ const char *hfiPair(unsigned slot, char (&out)[16]) {
     __builtin_unreachable();
 }
 
+#endif // XNU_BOOT_PROGRESS
+
 void gpuThread(void *argument, wait_result_t) {
     unsigned mode = static_cast<unsigned>(reinterpret_cast<uintptr_t>(argument)), delay = 0;
     if (PE_parse_boot_argn("myron-gpu-delay", &delay, sizeof delay) && delay && delay <= 600) IOSleep(delay * 1000);
@@ -2195,14 +2199,19 @@ void gpuThread(void *argument, wait_result_t) {
     if (mode == 11) {
         // The GPU stays up and published; the result is in the diagnostic page's GPU rows. The accelerator only on top of a run
         // that published the service (step 8 on), so the plugin never finds an accelerator without a GPU behind it.
-        unsigned metal = 0, seconds = 0, hang = 0;
+        unsigned metal = 0;
         if (PE_parse_boot_argn("myron-gpu-metal", &metal, sizeof metal) && metal == 1 && gM10.step >= 8) publishMetal();
+#if XNU_BOOT_PROGRESS
+        unsigned seconds = 0, hang = 0;
         if (!PE_parse_boot_argn("myron-gpu-report", &seconds, sizeof seconds) || seconds > 600) seconds = 0;
         if (!PE_parse_boot_argn("myron-gpu-hang", &hang, sizeof hang) || hang > 60 || gM10.step < 1) hang = 0;
         if (seconds || hang) watch(seconds, hang);
+#endif
         return;
     }
+#if XNU_BOOT_PROGRESS
     report(result, have);
+#endif
 }
 }  // namespace
 
@@ -2211,14 +2220,21 @@ void gpuThread(void *argument, wait_result_t) {
 // panel instead, headed by the display hand-off counters, and the waiting thread stays here: the rest of the system keeps running and the
 // render server's telemetry rows keep updating (reboot to leave). False when the GPU never came up; the caller panics then.
 extern "C" bool myron_gpu_swap_stall_pages(void) {
+#if XNU_BOOT_PROGRESS
     if (gM10.step < 8) return false;
     gSwapStall = 1;
     debugPages(0, false);
+#else
+    return false;
+#endif
 }
 
 extern "C" void myron_gpu_probe(void) {
     unsigned mode = 0;
     if (!PE_parse_boot_argn("myron-gpu", &mode, sizeof mode) || mode < 1 || mode > 11) return;
+#if !XNU_BOOT_PROGRESS
+    if (mode != 11) return; // Only normal initialization is available in production.
+#endif
     thread_t thread = nullptr;
     if (kernel_thread_start(gpuThread, reinterpret_cast<void *>(static_cast<uintptr_t>(mode)), &thread) == KERN_SUCCESS)
         thread_deallocate(thread);
