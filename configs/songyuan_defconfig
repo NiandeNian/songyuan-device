@@ -1,11 +1,8 @@
-# Kernel configuration of myron. CONFIG_XNU_<NAME> becomes XNU_<NAME> for the kernel build.
-# The platform expert, the architectural CPU and timer, PAN, the original-PMGR integration (no hardware access) and the
-# storage/root chain of sheng: NativeUfs on the host the firmware left running, the verified root policies of the
-# iPad7,1 image, the owner root trust, the SystemOS union and the RAM Data volume; sheng's diagnostic page and its
-# CPU-copied GOP display. The GPU is not enabled: its driver targets the SM8550 Adreno.
+# Optional legacy Darwin 23 owner-root pipeline. Requires signed OS/SystemOS
+# policies and a Data seed; not the default graphics build.
 
-# The board archives of board.toml ([kernel] archives: boot progress, legacy display with touch and the GPU probe, ...):
-# since upstream 5e782ac the kernel step builds them only when the configuration opts in, as sheng's does (f507dbc).
+# The full board archive pipeline in board.toml includes storage/root policies,
+# normal display, touch and A840 drivers. Archives are built when opted in.
 CONFIG_XNU_BUILD_ARCHIVES=y
 CONFIG_XNU_SOURCE_CORECRYPTO14=y
 CONFIG_XNU_SOURCE_PTHREAD=y
@@ -43,11 +40,11 @@ CONFIG_XNU_VERIFIED_ROOT_ARCHIVE="{tree}/build/verified-root-os-xnu-bundle/libVe
 # Volume UUID of this board's Data seed (scripts/prepare-owner-data-fixture.py, build/owner-data-fixture/seed.json).
 CONFIG_XNU_OWNER_DATA_VOLUME_UUID="DA0A68B3-8950-4E0C-9527-8AC5C426F5A9"
 
-# The on-screen diagnostic page of sheng (boot-progress=2): kernel console, stages, processes, storage and memory, drawn
-# into the framebuffer; also defines boot_progress_poll for NativeUfs (scripts/build-boot-progress.py, kits/myron).
+# Boot diagnostic page disabled.
 CONFIG_XNU_BOOT_PROGRESS=n
 # The iPadOS UI through the firmware framebuffer: NativeLegacyDisplay copies backboardd's software-rendered surface into
-# the GOP framebuffer on the CPU (scripts/build-native-legacy-display.py, offline-legacy-* arguments). No GPU.
+# the GOP framebuffer (scripts/build-native-legacy-display.py); the board arguments
+# enable the normal A840 accelerator and the production Metal scanout plugin.
 CONFIG_XNU_NATIVE_LEGACY_DISPLAY=y
 
 CONFIG_XNU_CRYPTO_BOOTSTRAP="prelinked"

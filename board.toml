@@ -35,12 +35,12 @@ windows = [
 ]
 
 [kernel]
-defconfig = "songyuan_defconfig"
+defconfig = "songyuan_graphics_defconfig"
 # Archive builders of the kernel step, in order. The platform expert and the architectural CPU, then the storage/root
 # chain of sheng: the storage ABI (static audit of this board's previous prelinked kernel), NativeAES, NativeUfs, the
 # verified VirtIO block bindings NativeUfs links against, the RAM Data block and the verified root policy bundle
-# (build/verified-root-os and build/verified-root-systemos must exist; see the stage 6 notes), then sheng's diagnostic
-# page and CPU-copied GOP display without its SM8550 probes, with myron's touch and Adreno 840 bring-up in its archive.
+# (build/verified-root-os and build/verified-root-systemos must exist), then shared driver state
+# and the GOP display with the SM8850 touch and Adreno 840 implementation in its archive.
 archives = [
   "build-corecrypto-14.py",
   "build-corecrypto-14.py --namespace",
@@ -55,7 +55,7 @@ archives = [
   "build-arm-driver.py NativeRamBlock",
   "build-native-virtio-bindings.py --component NativeRamBlock --directory build/native-ram-block",
   "build-verified-root-probe.py --component os --include-systemos",
-  "build-songyuan-runtime-state.py",               # the diagnostic page (CONFIG_XNU_BOOT_PROGRESS), kits/songyuan
+  "build-songyuan-runtime-state.py",               # shared driver state without a diagnostic page
   # The original AMFI panics "No PMGR?" without an ApplePMGR nub: the guarded original-PMGR integration of sheng
   # (CONFIG_XNU_SHENG_PMGR, kernel argument sheng-pmgr=2). Its builder needs this board's previous prelinked kernel.
   "prepare-pmgr-reference.py",
@@ -288,7 +288,7 @@ unique_chip_id = "required"          # the platform seed is not stored in any re
 # Image parameters come from the Mu-Silicium device config; [bootimg.image] would override them.
 
 # The stock ABL powers the panel off when the device tree has no splash region, and checks the node size.
-# Values from the stock myron dtbo overlay (fragment 197).
+# Values from the captured songyuan splash reservation.
 [[bootimg.dtb_node]]
 path = "/reserved-memory/splash_region"
 props = [

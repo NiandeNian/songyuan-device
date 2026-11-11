@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: MIT
-// The diagnostic page (BootProgress.c, from sheng) and NativeHidInput read counters of sheng's touch, CPU frequency, UFS
-// log and Adreno drivers. myron links none of them, and the static kernel link refuses an undefined weak reference, so
-// they are defined here, zero: their rows show nothing, and NativeHidInput sees no touch contacts. The display counters
-// come from LegacyDisplayProbe.cpp and NativeGOPPresenter.cpp, the HID counters from HidInputProbe.cpp, the process rows
-// from BootProcessProbe.c and BootUiTraceProbe.c. The Adreno cache counters native_adreno_cache_stats and
-// native_adreno_reassert_ticks come from NativeAdrenoCpu.cpp, which the GPU observation (MyronGpuPower.cpp) links, and the
-// submission counters native_adreno_coherence, native_adreno_wc_distrusted and native_adreno_wc_audit from its
-// NativeAdrenoSubmit.cpp (the run mode, myron-gpu=10/11). The line audit's two counters stay sheng's GpuPowerProbe.cpp's.
+// Shared counters for the SM8850 driver ABI and inert display-stage callbacks.
+// No diagnostic page or observer is started by this module.
 #include <stdint.h>
 
 char native_touch_rows[4][120];
