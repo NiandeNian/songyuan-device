@@ -47,6 +47,15 @@ System 文件大小为 5,371,183,104 字节，检查了 raw APFS 的 NXSB 超块
 已准备的原始 iOS 27 OS+SystemOS 约 15.6 GiB，也不能照搬此包的 9 GiB 参数。
 小米 15 的精简 System/小根盘组装方法有参考价值，但 iOS 27 的缓存、系统卷关系、信任缓存和启动身份仍需对应其版本重新制作。
 
+本轮在恢复后的 Android 中，以 root 只读采集 `/proc/iomem`：19 个顶层
+System RAM 范围合计约 15.266 GiB，最高范围结束于 `0xBFFFFF000`。
+这份 Linux 可见 RAM 已小于两份 iOS 27 解密镜像的合计约 15.619 GiB，
+尚未计算内核、用户进程和 UEFI。因此原始两份镜像不能整体常驻 RAM；
+需要参考此包重新组装适合 RAM 的系统。
+采集证据为本地 `hardware-tests/online-20261111/android-ram-banks.json`。
+Linux RAM 范围仍不是 UEFI 可分配内存；当前参考 DTS 的 `/memory/reg` 为零占位，
+后续应读取原厂 RAM partition table，并排除固件/安全保留区后再公开高地址内存。
+
 BAT 本身只执行 `fastboot boot` 与 USB 上传；`DADA_USB_RAM_ONLY` 绕过自动切槽、存储调查和菜单倒计时。
 不过完整 loader 源码仍含 `write_logs()`：找到 `logdump` 时会写该分区，显式 `oem logwrite` 还可允许写 boot_a。
 因此“BAT 没有 flash”不等于整个运行路径零写盘。songyuan 的保留 Android RAM 方案应关闭磁盘日志及显式分区写命令，使用屏幕、USB 和主机日志。
